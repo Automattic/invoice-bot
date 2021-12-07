@@ -9,10 +9,7 @@ class SlackController extends Controller
     
     public function receive_event( Request $request )
     {
-        $payload = json_decode( $request->getContent() );
-        if ( ! is_object( $payload ) || empty( $payload->type ) ) {
-            return response( 'Invalid request', 400 );
-        }
+        $payload = $this->authenticate_payload( $request );
 
         switch ( $payload->type ) {
             case 'url_verification':
@@ -25,6 +22,27 @@ class SlackController extends Controller
         error_log( 'Unhandled event:' );
         error_log( json_encode( $payload ) );
         return response( '', 200 );
+    }
+
+    private function authenticate_payload( Request $request ) 
+    {
+        // Verify timestamp.
+        $timestamp = intval( $request->header( 'X-Slack-Request-Timestamp' ) );
+        if ( $timestamp < time() - 60 * 5 ) {
+            return response( 'Timestamp too old', 400 );
+        }
+
+        // Verify signature.
+        $signature = $request->header( 'X-Slack-Signature' );
+        $secret = config( 'services.slack.signing_secret' );
+        $body = $request->getContent();
+
+        $hash = 'v0=' . hash_hmac( 'sha256', 'v0:' . $timestamp . ':' . $body, $secret );
+        if ( ! hash_equals( $hash, $signature ) ) {
+            return response( 'Invalid signature', 400 );
+        }
+
+        return json_decode( $body );
     }
 
     private function handle_event_callback( $event )
