@@ -21,3 +21,5 @@ Route::get('callback', [OAuthController::class, 'callback']);
 Route::get('docs',[DocsController::class, 'index']);
 Route::get('docs/create',[DocsController::class, 'create']);
 Route::get('docs/copy',[DocsController::class, 'copy']);
+Route::get('docs/export',[DocsController::class, 'export']);
+Route::get('docs/setUp',[DocsController::class, 'setUp']);
