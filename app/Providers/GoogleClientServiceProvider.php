@@ -20,7 +20,7 @@ class GoogleClientServiceProvider extends ServiceProvider
             $client->setClientId(config('services.google.client_id'));
             $client->setClientSecret(config('services.google.client_secret'));
             $client->setRedirectUri(config('services.google.redirect_uri'));
-            $client->setAccessType('offline');
+            $client->setAccessType('online');
             $client->addScope( \Google\Service\Drive::DRIVE_FILE );
 
             if(Session::has('access_token')) {

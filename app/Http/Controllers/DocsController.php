@@ -15,13 +15,22 @@ class DocsController extends Controller
 
     public function create(Request $request, \Google_Client $client)
     {
-        $service = new \Google_Service_Docs($client);
-        $templateFile = resource_path('json/invoice-template.json');
-        $template = json_decode(file_get_contents($templateFile), true, 512, JSON_OBJECT_AS_ARRAY);
+        $templateFile = resource_path( 'template.docx' );
+        $templateData = file_get_contents($templateFile);
 
-        $document = new \Google_Service_Docs_Document($template);
-        $document = $service->documents->create($document);
-        return redirect( 'https://docs.google.com/document/d/'.$document->getDocumentId().'/edit' );
+        $service = new \Google_Service_Drive( $client );
+
+        $file = new \Google\Service\Drive\DriveFile( $client );
+        $file->setName( 'Invoice Template' );
+        $file->setMimeType('application/vnd.google-apps.document');
+
+        $createdFile = $service->files->create($file, array(
+            'data' => $templateData,
+            'mimeType' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'uploadType' => 'multipart',
+        ));
+
+        return redirect( 'https://docs.google.com/document/d/'.$createdFile->getId().'/edit' );
     }
 
     public function export( \Google_Client $client)
