@@ -17,11 +17,10 @@ class DocsController extends Controller
     {
         $service = new \Google_Service_Docs($client);
         $templateFile = resource_path('json/invoice-template.json');
-        $template = json_decode(file_get_contents($templateFile), true);
+        $template = json_decode(file_get_contents($templateFile), true, 512, JSON_OBJECT_AS_ARRAY);
 
         $document = new \Google_Service_Docs_Document($template);
         $document = $service->documents->create($document);
-
         return redirect( 'https://docs.google.com/document/d/'.$document->getDocumentId().'/edit' );
     }
 
@@ -53,6 +52,7 @@ class DocsController extends Controller
         $driveFile = new \Google_Service_Drive_DriveFile([
             'name' => 'Template'
         ]);
+
 
         // TODO: Create the template file.
 
