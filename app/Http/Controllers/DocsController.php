@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Classes\GoogleDriveSetup;
+use App\Classes\Invoice;
 use Illuminate\Http\Request;
 
 class DocsController extends Controller
@@ -52,19 +54,24 @@ class DocsController extends Controller
 
     public function setUp( \Google_Client $client )
     {
-        $driveService = new \Google_Service_Drive($client);
-        $folder = new \Google_Service_Drive_DriveFile();
-        $folder->setName('Invoice Bot');
-        $folder->setMimeType('application/vnd.google-apps.folder');
-        $folder = $driveService->files->create($folder);
+        $setup = new GoogleDriveSetup($client);
+        session(['invoice_folder' => $setup->createFolder()->getId()]);
+        session(['invoice_template' => $setup->createTemplate()->getId()]);
+    }
 
-        $driveFile = new \Google_Service_Drive_DriveFile([
-            'name' => 'Template'
+    public function invoice( \Google_Client $client )
+    {
+        $template = session('invoice_template');
+
+        $invoice = Invoice::create($client, $template, 'Invoice #1');
+        $invoice->replaceText([
+            '{{invoiceDate}}' => '2018-01-01',
+            '{{invoiceNumber}}' => '1',
+            '{{invoiceYear}}' => '2018',
+            '[INITIALS]' => 'AMH',
         ]);
 
 
-        // TODO: Create the template file.
-
-        return $folder->getId();
+        return redirect( 'https://docs.google.com/document/d/'.$invoice->document->getId().'/edit' );
     }
 }
