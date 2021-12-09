@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Classes\Slack;
 use App\Classes\Invoice;
+use App\Models\User;
 
 class GenerateInvoices extends Command
 {
@@ -39,65 +40,73 @@ class GenerateInvoices extends Command
      */
     public function handle()
     {
-        # NOTE: Put your Google auth token here in JSON format. Should start with something like:
-        # {"access_token":"ya29.a0ARrdaM-5OuECq6KJ1QU8....
-        # TODO: Replace this with an auth token stored in the database.
-        $json_auth_code = '';
-
         $gclient = app( \Google_Client::class );
-        $gclient->setAccessToken( json_decode( $json_auth_code, true ) );
 
-        // TODO: actually look at the Users table and find users who are due an invoice.
-        // For now this is a hard-coded app home channel id, and a google template doc id.
-        $due_users = [ [
-            'user_channel' => 'D02QFHEKXSL',
-            'template_doc_id' => '1Eln2VZD95W7DmU-9fG3fuq1wwLWXrlR_HbbgCclhI9k',
-        ] ];
+        User::whereStatus('active')
+            ->whereDate('send_invoice_at', '<=', today()->toDateString())
+            ->chunk(100, function($users) use ($gclient) {
+                foreach( $users as $user ) {
+                    $gclient->setAccessToken( $user->google_access_token );
+                    $invoice = Invoice::create( $gclient, $user->gdrive_template_id, 'Invoice for ' . date( 'd M Y' ) );
+                    $invoice->replaceText([
+                        '{{invoiceDate}}' => today()->toDateString(),
+                        '{{invoiceNumber}}' => (string) $user->next_invoice_number, // Must be string
+                        '{{invoiceYear}}' => today()->format('Y'),
+                    ]);
 
-        foreach ( $due_users as $due_user ) {
-            // Generate an invoice.
-            // TODO: Replace these values with actually updateable things.
-            $invoice = Invoice::create( $gclient, $due_user['template_doc_id'], 'Invoice for ' . date( 'd M Y' ) );
-            $invoice->replaceText([
-                '{{invoiceDate}}' => '2018-01-01',
-                '{{invoiceNumber}}' => '1',
-                '{{invoiceYear}}' => '2018',
-                '[INITIALS]' => 'AMH',
-            ]);
+                    $invoice_url = 'https://docs.google.com/document/d/' . $invoice->document->getId();
 
-            $invoice_url = 'https://docs.google.com/document/d/' . $invoice->document->getId();
-
-            // Send invoice URL in Slack message.
-            Slack::post( 'chat.postMessage', [
-                'channel' => $due_user['user_channel'],
-                #'text' => "I've prepared a <$invoice_url|new Invoice> for you! Please review it and click Submit when ready.",
-                'unfurl_links' => false,
-                'blocks' => [
-                    [
-                        'type' => 'section',
-                        'text' => [
-                            'type' => 'mrkdwn',
-                            'text' => "I've prepared a <$invoice_url|new Invoice> for you! Please review it and click Submit when ready.",
-                        ],
-                    ],
-                    [
-                        'type' => 'actions',
-                        'block_id' => 'invoice_actions',
-                        'elements' => [
+                    // Send invoice URL in Slack message.
+                    Slack::post( 'chat.postMessage', [
+                        'channel' => $user->slack_channel_id,
+                        'text' => "I've prepared a new Invoice for you! Please review it and click Submit when ready.",
+                        'unfurl_links' => false,
+                        'blocks' => [
                             [
-                                'type' => 'button',
+                                'type' => 'section',
                                 'text' => [
-                                    'type' => 'plain_text',
-                                    'text' => 'Submit',
+                                    'type' => 'mrkdwn',
+                                    'text' => "I've prepared a <$invoice_url|new Invoice> for you! Please review it and send it when ready.",
                                 ],
-                                'value' => 'submit',
-                                'action_id' => 'submit',
+                            ],
+                            [
+                                'type' => 'actions',
+                                'block_id' => 'invoice_actions',
+                                'elements' => [
+                                    [
+                                        'type' => 'button',
+                                        'text' => [
+                                            'type' => 'plain_text',
+                                            'text' => 'Review',
+                                        ],
+                                        'value' => 'review',
+                                        'url' => $invoice_url,
+                                        'action_id' => 'review-invoice',
+                                    ],
+                                    [
+                                        'type' => 'button',
+                                        'text' => [
+                                            'type' => 'plain_text',
+                                            'text' => 'Send Invoice',
+                                        ],
+                                        'style' => 'primary',
+                                        'value' => $invoice_url,
+                                        'action_id' => 'submit-invoice',
+                                    ]
+                                ]
                             ]
                         ]
-                    ]
-                ]
-            ] );
-        }
+                    ] );
+
+
+                    $user->next_invoice_number = $user->next_invoice_number + 1;
+                    $user->send_invoice_at = today()->addMonth()->setDay(28);
+                    $user->save();
+
+                    $this->info( "Generated invoice for {$user->name}." );
+                    $this->line( "Invoice URL: $invoice_url" );
+                }
+            } );
 
         return Command::SUCCESS;
     }

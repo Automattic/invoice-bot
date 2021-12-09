@@ -14,6 +14,10 @@ class User extends Model
         'slack_channel_id',
     ];
 
+    protected $casts = [
+        'google_access_token' => 'array',
+    ];
+
     /**
      * Get the route key for the model.
      *

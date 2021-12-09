@@ -16,16 +16,12 @@ class GoogleClientServiceProvider extends ServiceProvider
     {
         $this->app->singleton(\Google_Client::class, function () {
             $client = new \Google_Client();
-            $client->setApplicationName("My Application");
+            $client->setApplicationName(config('app.name'));
             $client->setClientId(config('services.google.client_id'));
             $client->setClientSecret(config('services.google.client_secret'));
             $client->setRedirectUri(config('services.google.redirect_uri'));
-            $client->setAccessType('online');
+            $client->setAccessType('offline');
             $client->addScope( \Google\Service\Drive::DRIVE_FILE );
-
-            if(Session::has('access_token')) {
-                $client->setAccessToken(Session::get('access_token'));
-            }
 
             return $client;
         });
