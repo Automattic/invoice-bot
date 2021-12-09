@@ -15,11 +15,12 @@ class CreateUsersTable extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+            $table->string('slack_user_id')->unique();
+            $table->string('slack_channel_id');
+            $table->string('status')->default('fresh');
+            $table->text('google_access_token')->nullable();
+            $table->string('gdrive_folder_id')->nullable();
+            $table->string('gdrive_template_id')->nullable();
             $table->timestamps();
         });
     }

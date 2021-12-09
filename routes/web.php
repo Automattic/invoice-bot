@@ -14,9 +14,12 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
+Route::get('/', function () {
+    return 'Please open the bot on slack to start.';
+});
 
-Route::get('/', [OAuthController::class, 'redirect']);
-Route::get('callback', [OAuthController::class, 'callback']);
+Route::get('authorize/callback', [OAuthController::class, 'callback'])->name('oauth.callback');
+Route::get('authorize/{user}', [OAuthController::class, 'redirect'])->middleware('signed')->name('oauth.redirect');
 
 Route::get('docs',[DocsController::class, 'index']);
 Route::get('docs/create',[DocsController::class, 'create']);

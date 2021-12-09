@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Classes\Slack;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
 
 class OAuthController extends Controller
-{
-    
-    public function redirect( \Google_Client $client) 
+{   
+    public function redirect( \Google_Client $client, User $user )
     {
+        session()->put( 'user', $user );
+        $client->setState($user->slack_user_id);
         return redirect( $client->createAuthUrl() );
     }
 
@@ -18,17 +22,28 @@ class OAuthController extends Controller
             return  $request->get('error');
         }
 
-        if($request->get('code')) {
-            $client->fetchAccessTokenWithAuthCode($request->get('code'));
+        if(!Session::has('user')) {
+            return 'Cannot validate the user. Please click the Authorize button on slack again.';
+        }
 
-            $accessToken = $client->getAccessToken();
+        $user = Session::get('user');
+        $slack = new Slack( $user );
+
+        if($request->get('code')) {
+            $accessToken = $client->fetchAccessTokenWithAuthCode($request->get('code'));
 
             if( $accessToken ) {
-                session(['access_token' => $client->getAccessToken()]);
-                return 'Access token in set!';
+                $user->google_access_token = $accessToken;
+                $user->status = 'authorized';
+                $user->save();
+
+                $slack = new Slack( $user );
+                $slack->publishInvoiceSettingsHomeView();
+
+                return redirect('https://slack.com/app_redirect?channel='.$user->slack_channel_id);
             }
             
-            return 'Na-aa!';
+            return 'Some unknown error occured during authorization. Please try again.';
         }
 
         abort(500);
