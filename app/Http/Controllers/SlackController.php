@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Classes\SlackOnboarding;
 use Illuminate\Http\Request;
+use App\Classes\Slack;
 
 class SlackController extends Controller
 {
@@ -15,8 +16,12 @@ class SlackController extends Controller
         switch ( $payload->type ) {
             case 'url_verification':
                 return response( $payload->challenge, 200 );
+
             case 'event_callback':
                 return $this->handle_event_callback( $payload->event );
+            
+            case 'block_actions':
+                return $this->handle_block_action( $payload->channel->id, $payload->actions );
         }
 
         error_log( 'Unhandled event:' );
@@ -42,7 +47,20 @@ class SlackController extends Controller
             return response( 'Invalid signature', 400 );
         }
 
+        if ( 'application/x-www-form-urlencoded' === $request->header( 'Content-type' ) ) {
+            $body = $request->input( 'payload' );
+        }
+
         return json_decode( $body );
+    }
+
+    private function handle_block_action( $channel_id, $actions ) {
+        foreach ( $actions as $action ) {
+            Slack::post( 'chat.postMessage', [
+                'channel' => $channel_id,
+                'text' => 'Received: Block ' . $action->block_id . ' Action ' . $action->action_id,
+            ] );
+        }
     }
 
     private function handle_event_callback( $event )
