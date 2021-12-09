@@ -38,6 +38,7 @@ return [
 
     'slack' => [
         'signing_secret' => env('SLACK_SIGNING_SECRET'),
+        'token' => env('SLACK_TOKEN'),
     ],
 
 ];

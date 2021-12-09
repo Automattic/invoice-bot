@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Classes\SlackOnboarding;
 use Illuminate\Http\Request;
 
 class SlackController extends Controller
@@ -14,7 +15,6 @@ class SlackController extends Controller
         switch ( $payload->type ) {
             case 'url_verification':
                 return response( $payload->challenge, 200 );
-            
             case 'event_callback':
                 return $this->handle_event_callback( $payload->event );
         }
@@ -55,10 +55,12 @@ class SlackController extends Controller
             case 'message':
                 error_log( 'Received message: ' . $event->text );
                 return response( '', 200 );
+            case 'app_home_opened':
+                return (new SlackOnboarding())->invite($event->channel, $event->user);
         }
 
         error_log( 'Unhandled event callback:' );
-        error_log( json_encode( $payload ) );
+        error_log( json_encode( $event ) );
         return response( '', 200 );
     }
 
