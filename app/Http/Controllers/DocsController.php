@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Classes\GoogleDriveSetup;
+use App\Classes\GoogleDrive;
 use App\Classes\Invoice;
 use Illuminate\Http\Request;
 
@@ -54,7 +54,7 @@ class DocsController extends Controller
 
     public function setUp( \Google_Client $client )
     {
-        $setup = new GoogleDriveSetup($client);
+        $setup = new GoogleDrive($client);
         session(['invoice_folder' => $setup->createFolder()->getId()]);
         session(['invoice_template' => $setup->createTemplate()->getId()]);
     }

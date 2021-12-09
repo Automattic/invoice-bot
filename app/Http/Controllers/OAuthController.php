@@ -31,6 +31,7 @@ class OAuthController extends Controller
 
         if($request->get('code')) {
             $accessToken = $client->fetchAccessTokenWithAuthCode($request->get('code'));
+            $refreshToken = $client->getRefreshToken();
 
             if( $accessToken ) {
                 $user->google_access_token = $accessToken;

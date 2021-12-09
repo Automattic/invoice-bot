@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Classes\GoogleDriveSetup;
+use App\Classes\GoogleDrive;
 use App\Classes\Invoice;
 use App\Classes\Slack;
 use Illuminate\Http\Request;
@@ -37,6 +37,8 @@ class SlackController extends Controller
         $payload = $this->authenticate_block_action_payload( $request );
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $client->setAccessToken( $user->google_access_token );
+        $user->google_access_token = GoogleDrive::maybeRefreshAccessToken( $client );
+        $user->save();
 
         switch ( $payload->actions[0]->action_id ) {
             case 'save-invoice-details':
@@ -79,7 +81,7 @@ class SlackController extends Controller
             ] );
         }
     }
-    
+
     private function authenticate_block_action_payload( Request $request ) 
     {
         // Verify timestamp.
@@ -152,7 +154,7 @@ class SlackController extends Controller
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $slack = new Slack($user);
 
-        $driveSetup = new GoogleDriveSetup($client);
+        $driveSetup = new GoogleDrive($client);
         $folder = $driveSetup->createFolder();
         $template = $driveSetup->createTemplate();
 

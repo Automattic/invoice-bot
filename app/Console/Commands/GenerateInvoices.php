@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Classes\GoogleDrive;
 use Illuminate\Console\Command;
 use App\Classes\Slack;
 use App\Classes\Invoice;
@@ -47,6 +48,8 @@ class GenerateInvoices extends Command
             ->chunk(100, function($users) use ($gclient) {
                 foreach( $users as $user ) {
                     $gclient->setAccessToken( $user->google_access_token );
+                    $user->google_access_token = GoogleDrive::maybeRefreshAccessToken( $gclient );
+                    
                     $invoice = Invoice::create( $gclient, $user->gdrive_template_id, 'Invoice for ' . date( 'd M Y' ) );
                     $invoice->replaceText([
                         '{{invoiceDate}}' => today()->toDateString(),

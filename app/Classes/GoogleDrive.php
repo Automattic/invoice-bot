@@ -2,7 +2,7 @@
 
 namespace App\Classes;
 
-class GoogleDriveSetup
+class GoogleDrive
 {
     private $client;
     private $folder;
@@ -55,5 +55,14 @@ class GoogleDriveSetup
         ));
 
         return $createdFile;
+    }
+
+    public static function maybeRefreshAccessToken( $client )
+    {
+        if( $client->isAccessTokenExpired() ) {
+            $client->fetchAccessTokenWithRefreshToken( $client->getRefreshToken() );
+        }
+
+        return $client->getAccessToken();
     }
 }
