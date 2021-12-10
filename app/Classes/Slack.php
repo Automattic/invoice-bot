@@ -396,6 +396,51 @@ class Slack
           'action_id' => 'button-action',
         ],
       ],
+      [
+        'type' => 'divider',
+      ],
+      [
+        'type' => 'section',
+        'text' => [
+          'type' => 'plain_text',
+          'text' => "Don't want your invoice numbers to start from 1? Use the field below to set your next invoice number.",
+        ],
+      ],
+      [
+        'dispatch_action' => true,
+        'type' => 'input',
+        'element' => [
+          'type' => 'plain_text_input',
+          'action_id' => 'next-invoice-number-action',
+          'initial_value' => (string) $this->user->next_invoice_number,
+        ],
+        'label' => [
+          'type' => 'plain_text',
+          'text' => 'Next Invoice Number',
+          'emoji' => true,
+        ],
+      ],
+      [
+        'type' => 'divider',
+      ],
+      [
+        'type' => 'section',
+        'text' => [
+          'type' => 'plain_text',
+          'text' => 'If you no longer want to use invoice bot, click the disconnect button and all data wil be deleted from the app.',
+        ],
+        'accessory' => [
+          'type' => 'button',
+          'style' => 'danger',
+          'text' => [
+            'type' => 'plain_text',
+            'text' => ':disappointed: Disconnect',
+            'emoji' => true,
+          ],
+          'value' => 'click_me_123',
+          'action_id' => 'disconnect-action',
+        ],
+      ]
     ]);
   }
 
