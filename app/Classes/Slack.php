@@ -74,6 +74,50 @@ class Slack
     return $this->post('chat.postMessage', $message);
   }
 
+  public function sendInvoiceMessage($invoice_name, $invoice_number, $invoice_id)
+  {
+    $invoice_url = GoogleDrive::getDocLinkById($invoice_id);
+
+    $this->sendMessage("I've prepared a new Invoice for you! Please review it and click Submit when ready.", [
+        'blocks' => [
+            [
+                'type' => 'section',
+                'text' => [
+                    'type' => 'mrkdwn',
+                    'text' => "I've prepared a <$invoice_url|new Invoice> for you! Please review it and send it when ready.",
+                ],
+            ],
+            Slack::getInvoicePreviewBlock( $invoice_number, $invoice_name  ),
+            [
+                'type' => 'actions',
+                'block_id' => 'invoice_actions',
+                'elements' => [
+                    [
+                        'type' => 'button',
+                        'text' => [
+                            'type' => 'plain_text',
+                            'text' => 'Review',
+                        ],
+                        'value' => 'review',
+                        'url' => $invoice_url,
+                        'action_id' => 'review-invoice',
+                    ],
+                    [
+                        'type' => 'button',
+                        'text' => [
+                            'type' => 'plain_text',
+                            'text' => 'Send Invoice',
+                        ],
+                        'style' => 'primary',
+                        'value' => json_encode(['invoice_number' => $invoice_number, 'invoice_id' => $invoice_id, 'invoice_name' => $invoice_name]),
+                        'action_id' => 'submit-invoice',
+                    ]
+                ]
+            ]
+        ]
+    ]);
+  }
+
   public function publishView($type, $blocks)
   {
     return $this->post('views.publish', [
@@ -85,9 +129,9 @@ class Slack
     ]);
   }
 
-  public function publishUnauthorizedHomeView()
+  public function unauthorizedHomeView()
   {
-    return $this->publishView('home', [
+    return [
       [
         "type" => "section",
         "text" => [
@@ -130,7 +174,12 @@ class Slack
           ]
         ]
       ]
-    ]);
+    ];
+  }
+
+  public function publishUnauthorizedHomeView()
+  {
+    return $this->publishView('home', $this->unauthorizedHomeView());
   }
 
   public function publishInvoiceSettingsHomeView()
@@ -449,7 +498,14 @@ class Slack
     $rt = [];
     foreach ((array) data_get($payload, 'view.state.values') as $values) {
       foreach ((array) $values as $key => $value) {
-        $rt[$key] = data_get($value, 'value');
+        switch (data_get($value, 'type')) {
+          case 'plain_text_input':
+            $rt[$key] = data_get($value, 'value');
+            break;
+          case 'datepicker':
+            $rt[$key] = data_get($value, 'selected_date');
+            break;
+        }
       }
     }
 

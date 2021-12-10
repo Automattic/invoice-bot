@@ -8,6 +8,7 @@ use App\Classes\Slack;
 use App\Mail\InvoiceMail;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 class SlackController extends Controller
@@ -32,16 +33,20 @@ class SlackController extends Controller
     public function receiveInteraction( Request $request, \Google_Client $client )
     {
         $payload = $this->authenticateInteractionPayload( $request );
-        $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
-        $client->setAccessToken( $user->google_access_token );
-        $user->google_access_token = GoogleDrive::maybeRefreshAccessToken( $client );
-        $user->save();
+        $user = User::where('slack_user_id', $payload->user->id)->first();
+        if( $user && $user->google_access_token ) {
+            $client->setAccessToken( $user->google_access_token );
+            $user->google_access_token = GoogleDrive::maybeRefreshAccessToken( $client );
+            $user->save();
+        }
 
         switch( $payload->type ) {
             case 'block_actions':
                 return $this->handleBlockAction( $payload, $user, $client );
             case 'view_submission':
                 return $this->handleViewSubmission( $payload, $user, $client );
+            case 'shortcut':
+                return $this->handleShortcut( $payload, $user, $client );
         }
 
         return response( '', 200 );
@@ -89,6 +94,15 @@ class SlackController extends Controller
         switch ( $payload->view->callback_id ) {
             case 'disconnect-confirmation-modal':
                 return $this->handleDisconnectConfirmation( $payload, $user, $client );
+            case 'create-invoice-modal':
+                return $this->handleCreateNewInvoiceModalSubmission( $payload, $user, $client );
+        }
+    }
+
+    private function handleShortcut( $payload, $user, $client ) {
+        switch ( $payload->callback_id ) {
+            case 'create-new-invoice':
+                return $this->handleCreateNewInvoiceShortcut( $payload, $user, $client );
         }
     }
 
@@ -321,6 +335,122 @@ class SlackController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function handleCreateNewInvoiceShortcut( $payload, $user, $client )
+    {
+        $user = User::where('slack_user_id', $payload->user->id)->first();
+        if(!$user || $user->status != 'active') {
+            Slack::post('views.open', [
+                'trigger_id' => $payload->trigger_id,
+                'view' => [
+                    'type' => 'modal',
+                    'title' => [
+                        'type' => 'plain_text',
+                        'text' => 'You are not connected',
+                    ],
+                    'close' => [
+                        'type' => 'plain_text',
+                        'text' => 'Close',
+                    ],
+                    'blocks' => [
+                        [
+                            'type' => 'section',
+                            'text' => [
+                                'type' => 'mrkdwn',
+                                'text' => 'Please open invoice bot app home to connect invoice bot',
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+
+            return response( '', 200 );
+        }
+
+        $slack = new Slack($user);
+        $slack->post('views.open', [
+            'trigger_id' => $payload->trigger_id,
+            'view' => [
+                'type' => 'modal',
+                'callback_id' => 'create-invoice-modal',
+                'title' => [
+                    'type' => 'plain_text',
+                    'text' => 'Create a custom invoice',
+                ],
+                'submit' => [
+                    'type' => 'plain_text',
+                    'text' => 'Create',
+                ],
+                'close' => [
+                    'type' => 'plain_text',
+                    'text' => 'Cancel',
+                ],
+                'blocks' => [
+                    [
+                        'type' => 'context',
+                        'elements' => [
+                            [
+                                'type' => 'plain_text',
+                                'text' => 'Use this to create a new custom invoice based on your template.',
+                                'emoji' => true,
+                            ],
+                        ],
+                    ],
+                    [
+                        'type' => 'input',
+                        'element' => [
+                            'type' => 'plain_text_input',
+                            'action_id' => 'invoice-number-action',
+                            'initial_value' => (string) $user->next_invoice_number,
+                        ],
+                        'label' => [
+                            'type' => 'plain_text',
+                            'text' => 'Invoice Number',
+                        ],
+                    ],
+                    [
+                        'type' => 'input',
+                        'element' => [
+                            'type' => 'datepicker',
+                            'action_id' => 'invoice-date-action',
+                            'initial_date' => today()->format('Y-m-d'),
+                        ],
+                        'label' => [
+                            'type' => 'plain_text',
+                            'text' => 'Invoice Date',
+                            'emoji' => true,
+                        ]
+                    ]
+                ],
+            ],
+        ]);
+    }
+
+    private function handleCreateNewInvoiceModalSubmission( $payload, $user, $client )
+    {
+        $slack = new Slack($user);
+        $formValues = $slack->extractFormValues($payload);
+        $invoiceDate = Carbon::createFromFormat('Y-m-d', $formValues['invoice-date-action']);
+        $invoiceNumber = $formValues['invoice-number-action'];
+
+        $invoice_name =  'Invoice: ' . $invoiceDate->format('d M Y');
+        $invoice = Invoice::create( $client, $user->gdrive_template_id, $invoice_name );
+        $invoice->replaceText([
+            '{{invoiceDate}}' => $invoiceDate->toDateString(),
+            '{{invoiceNumber}}' => $invoiceNumber,
+            '{{invoiceYear}}' => $invoiceDate->format('Y'),
+        ]);
+
+        $slack->sendInvoiceMessage( $invoice_name, $user->next_invoice_number, $invoice->document->getId());
+
+        // If user used the next invoice number, increment it
+        if( $user->next_invoice_number == $invoiceNumber ) {
+            $user->next_invoice_number++;
+            $user->save();
+        }
+
+        return response( '', 200 );
     }
 
     private function handleDisconnectConfirmation( $payload, $user, $client )

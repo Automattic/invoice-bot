@@ -44,7 +44,7 @@ class GenerateInvoices extends Command
         $gclient = app( \Google_Client::class );
 
         User::whereStatus('active')
-            // ->whereDate('send_invoice_at', '<=', today()->toDateString())
+            ->whereDate('send_invoice_at', '<=', today()->toDateString())
             ->chunk(100, function($users) use ($gclient) {
                 foreach( $users as $user ) {
                     $gclient->setAccessToken( $user->google_access_token );
@@ -57,56 +57,13 @@ class GenerateInvoices extends Command
                         '{{invoiceYear}}' => today()->format('Y'),
                     ]);
 
-                    $invoice_url = 'https://docs.google.com/document/d/' . $invoice->document->getId();
-
                     // Send invoice URL in Slack message.
                     $slack = new Slack( $user );
-                    $slack->sendMessage("I've prepared a new Invoice for you! Please review it and click Submit when ready.", [
-                        'blocks' => [
-                            [
-                                'type' => 'section',
-                                'text' => [
-                                    'type' => 'mrkdwn',
-                                    'text' => "I've prepared a <$invoice_url|new Invoice> for you! Please review it and send it when ready.",
-                                ],
-                            ],
-                            Slack::getInvoicePreviewBlock( $user->next_invoice_number, $invoice_name  ),
-                            [
-                                'type' => 'actions',
-                                'block_id' => 'invoice_actions',
-                                'elements' => [
-                                    [
-                                        'type' => 'button',
-                                        'text' => [
-                                            'type' => 'plain_text',
-                                            'text' => 'Review',
-                                        ],
-                                        'value' => 'review',
-                                        'url' => $invoice_url,
-                                        'action_id' => 'review-invoice',
-                                    ],
-                                    [
-                                        'type' => 'button',
-                                        'text' => [
-                                            'type' => 'plain_text',
-                                            'text' => 'Send Invoice',
-                                        ],
-                                        'style' => 'primary',
-                                        'value' => json_encode(['invoice_number' => $user->next_invoice_number, 'invoice_id' => $invoice->document->getId(), 'invoice_name' => $invoice_name]),
-                                        'action_id' => 'submit-invoice',
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]);
-
+                    $slack->sendInvoiceMessage( $invoice_name, $user->next_invoice_number, $invoice->document->getId());
 
                     $user->next_invoice_number = $user->next_invoice_number + 1;
                     $user->send_invoice_at = today()->addMonth()->endOfMonth()->subDay();
                     $user->save();
-
-                    $this->info( "Generated invoice for {$user->name}." );
-                    $this->line( "Invoice URL: $invoice_url" );
                 }
             } );
 
