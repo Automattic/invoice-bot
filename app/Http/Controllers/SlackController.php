@@ -43,6 +43,8 @@ class SlackController extends Controller
         switch ( $payload->actions[0]->action_id ) {
             case 'save-invoice-details':
                 return $this->save_invoice_details( $payload, $client );
+            case 'submit-invoice':
+                return $this->submit_invoice( $payload, $client );
         }
 
         return response( '', 200 );
@@ -196,7 +198,9 @@ class SlackController extends Controller
         $user->save();
 
         $invoice = new Invoice($client, $template);
-        $invoice->replaceText($textReplacements);
+        if(!empty($textReplacements)) {
+            $invoice->replaceText($textReplacements);
+        }
 
         $slack->publishActiveHomeView();
 
@@ -210,5 +214,42 @@ class SlackController extends Controller
             $ret .= strtoupper($word[0]);
         }
         return $ret;
+    }
+
+    private function submit_invoice( $payload, $client )
+    {
+        $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
+        $slack = new Slack($user);
+        $invoiceData = json_decode($payload->actions[0]->value);
+        
+        $slack->replyMessage($payload, 'Thank you for submitting your invoice. I will send it to payroll shortly.', [
+            'blocks' => [
+                [
+                    'type' => 'section',
+                    'text' => [
+                        'type' => 'mrkdwn',
+                        'text' => 'I have submitted the invoice on behalf of you!',
+                    ],
+                ],
+                Slack::getInvoicePreviewBlock($invoiceData->invoice_number, $invoiceData->invoice_name),
+                [
+                    'type' => 'actions',
+                    'elements' => [
+                        [
+                            'type' => 'button',
+                            'text' => [
+                                'type' => 'plain_text',
+                                'text' => 'View Invoice',
+                                'emoji' => true,
+                            ],
+                            'style' => 'primary',
+                            'url' => $invoiceData->invoice_url,
+                            'value' => 'invoice_settings',
+                            'action_id' => 'invoice_settings',
+                        ],
+                    ],
+                ]
+            ],
+        ]);
     }
 }
