@@ -342,8 +342,9 @@ class Slack
       [
         'type' => 'actions',
         'elements' => [
-          0 => [
+          [
             'type' => 'button',
+            'style' => 'primary',
             'text' => [
               'type' => 'plain_text',
               'text' => 'Save',
@@ -384,6 +385,7 @@ class Slack
         ],
         'accessory' => [
           'type' => 'button',
+          'style' => 'primary',
           'text' => [
             'type' => 'plain_text',
             'text' => 'Edit template',
