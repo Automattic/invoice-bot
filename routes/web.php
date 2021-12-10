@@ -22,10 +22,3 @@ Route::get('/', function () {
 
 Route::get('authorize/callback', [OAuthController::class, 'callback'])->name('oauth.callback');
 Route::get('authorize/{user}', [OAuthController::class, 'redirect'])->middleware('signed')->name('oauth.redirect');
-
-Route::get('docs',[DocsController::class, 'index']);
-Route::get('docs/create',[DocsController::class, 'create']);
-Route::get('docs/copy',[DocsController::class, 'copy']);
-Route::get('docs/export',[DocsController::class, 'export']);
-Route::get('docs/setUp',[DocsController::class, 'setUp']);
-Route::get('docs/invoice',[DocsController::class, 'invoice']);
