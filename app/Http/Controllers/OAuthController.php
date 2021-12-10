@@ -31,10 +31,10 @@ class OAuthController extends Controller
 
         if($request->get('code')) {
             $accessToken = $client->fetchAccessTokenWithAuthCode($request->get('code'));
-            $refreshToken = $client->getRefreshToken();
 
             if( $accessToken ) {
                 $user->google_access_token = $accessToken;
+                $user->email = $this->getUserEmail($client);
                 $user->status = 'authorized';
                 $user->save();
 
@@ -48,5 +48,12 @@ class OAuthController extends Controller
         }
 
         abort(500);
+    }
+
+    private function getUserEmail($client)
+    {
+        $service = new \Google\Service\PeopleService($client);
+        $result = $service->people->get('people/me', ['personFields' => 'emailAddresses']);
+        return $result->getEmailAddresses()[0]->getValue();
     }
 }

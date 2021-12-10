@@ -22,6 +22,8 @@ class GoogleClientServiceProvider extends ServiceProvider
             $client->setRedirectUri(config('services.google.redirect_uri'));
             $client->setAccessType('offline');
             $client->addScope( \Google\Service\Drive::DRIVE_FILE );
+            $client->addScope( \Google\Service\PeopleService::USERINFO_EMAIL );
+            $client->addScope( \Google\Service\PeopleService::USERINFO_PROFILE );
 
             return $client;
         });

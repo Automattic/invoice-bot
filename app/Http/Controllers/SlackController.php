@@ -160,8 +160,6 @@ class SlackController extends Controller
 
         $user->gdrive_folder_id = $folder->getId();
         $user->gdrive_template_id = $template->getId();
-        $user->status = 'active';
-        $user->save();
 
         $formValues = collect($slack->extractFormValues($payload));
         $textReplacements = [];
@@ -194,6 +192,8 @@ class SlackController extends Controller
         if(isset($formValues['bic-action'])) {
             $textReplacements['BIC'] = $formValues['bic-action'];
         }
+        $user->status = 'active';
+        $user->save();
 
         $invoice = new Invoice($client, $template);
         $invoice->replaceText($textReplacements);

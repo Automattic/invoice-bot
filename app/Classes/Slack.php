@@ -113,9 +113,19 @@ class Slack
               'type' => 'section',
               'text' => [
                 'type' => 'plain_text',
-                'text' => 'Let us setup an invoice template for you. Please fill out the details below to create your invoice template.',
+                'text' => 'Let me setup an invoice template for you. Please fill out the details below to create your invoice template.',
                 'emoji' => true,
               ],
+            ],
+            [
+              "type" => "context",
+              "elements" => [
+                [
+                  "type" => "plain_text",
+                  "text" => "Feel free to skip any of these information now. You will be able to edit the template later.",
+                  "emoji" => true
+                ]
+              ]
             ],
             [
               'type' => 'header',
@@ -152,6 +162,16 @@ class Slack
                 'text' => 'Your Address',
                 'emoji' => true,
               ],
+            ],
+            [
+              "type" => "context",
+              "elements" => [
+                [
+                  "type" => "plain_text",
+                  "text" => "For the invoice.",
+                  "emoji" => true
+                ]
+              ]
             ],
             [
               'type' => 'input',
