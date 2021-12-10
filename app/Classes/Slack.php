@@ -14,6 +14,21 @@ class Slack
     $this->user = $user;
   }
 
+  public static function get($endpoint, $args)
+  {
+    $query = http_build_query($args);
+
+    $response = Http::withToken(config('services.slack.token'))
+      ->contentType('application/json')
+      ->get('https://slack.com/api/' . $endpoint . '?' . $query);
+
+    if ($response->getStatusCode() !== 200) {
+      throw new \Exception($response->getBody());
+    }
+
+    return $response->json();
+  }
+
   public static function post($endpoint, $body)
   {
     $response = Http::withToken(config('services.slack.token'))
@@ -163,6 +178,7 @@ class Slack
         'element' => [
           'type' => 'plain_text_input',
           'action_id' => 'name-action',
+          'initial_value' => $this->user->name,
         ],
         'label' => [
           'type' => 'plain_text',
@@ -407,5 +423,14 @@ class Slack
         "alt_text" => "invoice thumbnail"
       ]
     ];
+  }
+
+  public function getUserInfo()
+  {
+    $response = $this->get('users.info', [
+      'user' => $this->user->slack_user_id,
+    ]);
+
+    return $response['user'];
   }
 }

@@ -13,6 +13,7 @@ class OAuthController extends Controller
     {
         session()->put( 'user', $user );
         $client->setState($user->slack_user_id);
+        $client->setLoginHint($user->email);
         return redirect( $client->createAuthUrl() );
     }
 

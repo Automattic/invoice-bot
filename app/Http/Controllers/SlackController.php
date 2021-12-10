@@ -134,11 +134,15 @@ class SlackController extends Controller
         
 
         $slack = new Slack( $user );
+        $slackUserData = $slack->getUserInfo();
+
+        $user->name = data_get($slackUserData, 'real_name');
+        $user->timezone = data_get($slackUserData, 'tz');
         switch ($user->status) {
             case 'fresh':
+                $user->email = data_get($slackUserData, 'profile.email'); // After an account is authorized, we will get the email address from google.
                 $slack->publishUnauthorizedHomeView();
                 $user->status = 'invited';
-                $user->save();
                 break;
             case 'authorized':
                 $slack->publishInvoiceSettingsHomeView();
@@ -147,6 +151,8 @@ class SlackController extends Controller
                 $slack->publishActiveHomeView();
                 break;
         }
+
+        $user->save();
         
         return response( '', 200 );
     }
@@ -168,6 +174,7 @@ class SlackController extends Controller
         if(isset($formValues['name-action'])) {
             $textReplacements['YOUR NAME'] = $formValues['name-action'];
             $textReplacements['INITIALS'] = $this->initials( $formValues['name-action'] );
+            $user->name = $formValues['name-action'];
         }
         if(isset($formValues['address-action'])) {
             $textReplacements['YOUR ADDRESS'] = $formValues['address-action'];
