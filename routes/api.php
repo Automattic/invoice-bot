@@ -19,5 +19,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/slack/event', [SlackController::class, 'receive_event']);
-Route::post('/slack/block-actions', [SlackController::class, 'receive_block_actions']);
+Route::post('/slack/event', [SlackController::class, 'receiveEvent']);
+Route::post('/slack/interaction', [SlackController::class, 'receiveInteraction']);

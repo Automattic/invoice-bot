@@ -63,7 +63,7 @@ class Slack
     return $response;
   }
 
-  public function sendMessage($text, $payload)
+  public function sendMessage($text, $payload = [])
   {
     $message = array_merge([
       'channel' => $this->user->slack_channel_id,

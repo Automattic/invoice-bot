@@ -13,45 +13,41 @@ use Illuminate\Support\Facades\Mail;
 class SlackController extends Controller
 {
     
-    public function receive_event( Request $request )
+    public function receiveEvent( Request $request )
     {
-        $payload = $this->authenticate_payload( $request );
+        $payload = $this->authenticatePayload( $request );
 
         switch ( $payload->type ) {
             case 'url_verification':
                 return response( $payload->challenge, 200 );
 
             case 'event_callback':
-                return $this->handle_event_callback( $payload->event );
-            
-            case 'block_actions':
-                return $this->handle_block_action( $payload->channel->id, $payload->actions );
+                return $this->handleEventCallback( $payload->event );
         }
 
-        error_log( 'Unhandled event:' );
-        error_log( json_encode( $payload ) );
+        logger( 'Unhandled event:', [$payload] );
         return response( '', 200 );
     }
 
-    public function receive_block_actions( Request $request, \Google_Client $client )
+    public function receiveInteraction( Request $request, \Google_Client $client )
     {
-        $payload = $this->authenticate_block_action_payload( $request );
+        $payload = $this->authenticateInteractionPayload( $request );
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $client->setAccessToken( $user->google_access_token );
         $user->google_access_token = GoogleDrive::maybeRefreshAccessToken( $client );
         $user->save();
 
-        switch ( $payload->actions[0]->action_id ) {
-            case 'save-invoice-details':
-                return $this->save_invoice_details( $payload, $client );
-            case 'submit-invoice':
-                return $this->submit_invoice( $payload, $client );
+        switch( $payload->type ) {
+            case 'block_actions':
+                return $this->handleBlockAction( $payload, $user, $client );
+            case 'view_submission':
+                return $this->handleViewSubmission( $payload, $user, $client );
         }
 
         return response( '', 200 );
     }
 
-    private function authenticate_payload( Request $request ) 
+    private function authenticatePayload( Request $request ) 
     {
         // Verify timestamp.
         $timestamp = intval( $request->header( 'X-Slack-Request-Timestamp' ) );
@@ -76,16 +72,27 @@ class SlackController extends Controller
         return json_decode( $body );
     }
 
-    private function handle_block_action( $channel_id, $actions ) {
-        foreach ( $actions as $action ) {
-            Slack::post( 'chat.postMessage', [
-                'channel' => $channel_id,
-                'text' => 'Received: Block ' . $action->block_id . ' Action ' . $action->action_id,
-            ] );
+    private function handleBlockAction( $payload, $user, $client ) {
+        switch ( $payload->actions[0]->action_id ) {
+            case 'save-invoice-details':
+                return $this->handleSaveInvoiceDetails( $payload, $client );
+            case 'submit-invoice':
+                return $this->handleSubmitInvoice( $payload, $client );
+            case 'next-invoice-number-action':
+                return $this->handleInvoiceNumberAction( $payload );
+            case 'disconnect-action':
+                return $this->handleDisconnectAction( $payload );
         }
     }
 
-    private function authenticate_block_action_payload( Request $request ) 
+    private function handleViewSubmission( $payload, $user, $client ) {
+        switch ( $payload->view->callback_id ) {
+            case 'disconnect-confirmation-modal':
+                return $this->handleDisconnectConfirmation( $payload, $user, $client );
+        }
+    }
+
+    private function authenticateInteractionPayload( Request $request ) 
     {
         // Verify timestamp.
         $timestamp = intval( $request->header( 'X-Slack-Request-Timestamp' ) );
@@ -106,7 +113,7 @@ class SlackController extends Controller
         return json_decode( $request->input( 'payload' ) );
     }
 
-    private function handle_event_callback( $event )
+    private function handleEventCallback( $event )
     {
         if ( ! is_object( $event ) || empty( $event->type ) ) {
             return response( 'Invalid request', 400 );
@@ -117,7 +124,7 @@ class SlackController extends Controller
                 error_log( 'Received message: ' . $event->text );
                 return response( '', 200 );
             case 'app_home_opened':
-                return $this->handle_app_home_opened( $event );
+                return $this->handleAppHomeOpened( $event );
         }
 
         error_log( 'Unhandled event callback:' );
@@ -125,7 +132,7 @@ class SlackController extends Controller
         return response( '', 200 );
     }
 
-    private function handle_app_home_opened( $event )
+    private function handleAppHomeOpened( $event )
     {
         $user = User::firstOrCreate(
             ['slack_user_id' => $event->user],
@@ -158,7 +165,7 @@ class SlackController extends Controller
         return response( '', 200 );
     }
 
-    private function save_invoice_details( $payload, $client )
+    private function handleSaveInvoiceDetails( $payload, $client )
     {
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $slack = new Slack($user);
@@ -224,7 +231,7 @@ class SlackController extends Controller
         return $ret;
     }
 
-    private function submit_invoice( $payload, $client )
+    private function handleSubmitInvoice( $payload, $client )
     {
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $slack = new Slack($user);
@@ -261,5 +268,69 @@ class SlackController extends Controller
                 ]
             ],
         ]);
+
+        return response( '', 200 );
+    }
+
+    private function handleInvoiceNumberAction( $payload )
+    {
+        $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
+        $user->next_invoice_number = $payload->actions[0]->value;
+        $user->save();
+
+        return response( '', 200 );
+    }
+
+    private function handleDisconnectAction( $payload )
+    {
+        $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
+
+        $slack = new Slack($user);
+        $slack->post('views.open', [
+            'trigger_id' => $payload->trigger_id,
+            'view' => [
+                'type' => 'modal',
+                'callback_id' => 'disconnect-confirmation-modal',
+                'title' => [
+                    'type' => 'plain_text',
+                    'text' => 'Disconnect',
+                ],
+                'submit' => [
+                    'type' => 'plain_text',
+                    'text' => 'Disconnect',
+                ],
+                'close' => [
+                    'type' => 'plain_text',
+                    'text' => 'Cancel',
+                ],
+                'blocks' => [
+                    [
+                        'type' => 'section',
+                        'text' => [
+                            'type' => 'mrkdwn',
+                            'text' => 'Are you sure? This cannot be reversed and you will need to start over fresh.',
+                        ],
+                    ],
+                    [
+                        'type' => 'section',
+                        'text' => [
+                            'type' => 'mrkdwn',
+                            'text' => "I don't want to see you go :sob:",
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    private function handleDisconnectConfirmation( $payload, $user, $client )
+    {
+        $client->revokeToken();
+        $slack = new Slack($user);
+        $slack->sendMessage("Bye bye! :wave:");
+        $slack->publishUnauthorizedHomeView();
+        $user->delete();
+
+        return response( '', 200 );
     }
 }
