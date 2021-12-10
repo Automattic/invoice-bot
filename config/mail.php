@@ -91,6 +91,8 @@ return [
     |
     */
 
+    'payroll_address' => env('MAIL_PAYROLL_EMAIL'),
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),

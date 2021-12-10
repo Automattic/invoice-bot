@@ -65,4 +65,9 @@ class GoogleDrive
 
         return $client->getAccessToken();
     }
+
+    public static function getDocLinkById( $id )
+    {
+        return 'https://docs.google.com/document/d/' . $id;
+    }
 }

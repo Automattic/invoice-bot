@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\OAuthController;
+use App\Mail\InvoiceMail;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 /*

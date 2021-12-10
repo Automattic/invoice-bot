@@ -92,7 +92,7 @@ class GenerateInvoices extends Command
                                             'text' => 'Send Invoice',
                                         ],
                                         'style' => 'primary',
-                                        'value' => json_encode(['invoice_number' => $user->next_invoice_number, 'invoice_url' => $invoice_url, 'invoice_name' => $invoice_name]),
+                                        'value' => json_encode(['invoice_number' => $user->next_invoice_number, 'invoice_id' => $invoice->document->getId(), 'invoice_name' => $invoice_name]),
                                         'action_id' => 'submit-invoice',
                                     ]
                                 ]
@@ -102,7 +102,7 @@ class GenerateInvoices extends Command
 
 
                     $user->next_invoice_number = $user->next_invoice_number + 1;
-                    $user->send_invoice_at = today()->addMonth()->setDay(28);
+                    $user->send_invoice_at = today()->addMonth()->endOfMonth()->subDay();
                     $user->save();
 
                     $this->info( "Generated invoice for {$user->name}." );

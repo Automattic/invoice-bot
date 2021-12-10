@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use App\Classes\GoogleDrive;
 use App\Classes\Invoice;
 use App\Classes\Slack;
+use App\Mail\InvoiceMail;
 use Illuminate\Http\Request;
 use App\Models\User;
-
+use Illuminate\Support\Facades\Mail;
 
 class SlackController extends Controller
 {
@@ -228,6 +229,8 @@ class SlackController extends Controller
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $slack = new Slack($user);
         $invoiceData = json_decode($payload->actions[0]->value);
+
+        Mail::send(new InvoiceMail($user, data_get($invoiceData, 'invoice_id')));
         
         $slack->replyMessage($payload, 'Thank you for submitting your invoice. I will send it to payroll shortly.', [
             'blocks' => [
@@ -250,7 +253,7 @@ class SlackController extends Controller
                                 'emoji' => true,
                             ],
                             'style' => 'primary',
-                            'url' => $invoiceData->invoice_url,
+                            'url' => GoogleDrive::getDocLinkById( $invoiceData->invoice_id ),
                             'value' => 'invoice_settings',
                             'action_id' => 'invoice_settings',
                         ],
