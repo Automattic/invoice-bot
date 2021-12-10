@@ -251,7 +251,7 @@ class SlackController extends Controller
         $slack = new Slack($user);
         $invoiceData = json_decode($payload->actions[0]->value);
 
-        Mail::send(new InvoiceMail($user, data_get($invoiceData, 'invoice_id')));
+        Mail::send(new InvoiceMail($user, $invoiceData));
         
         $slack->replyMessage($payload, 'Thank you for submitting your invoice. I will send it to payroll shortly.', [
             'blocks' => [
@@ -442,7 +442,7 @@ class SlackController extends Controller
             '{{invoiceYear}}' => $invoiceDate->format('Y'),
         ]);
 
-        $slack->sendInvoiceMessage( $invoice_name, $user->next_invoice_number, $invoice->document->getId());
+        $slack->sendInvoiceMessage( $invoice_name, $invoiceNumber, $invoice->document->getId(), $invoiceDate->toDateString());
 
         // If user used the next invoice number, increment it
         if( $user->next_invoice_number == $invoiceNumber ) {

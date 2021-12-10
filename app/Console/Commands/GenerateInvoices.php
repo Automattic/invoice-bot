@@ -59,7 +59,7 @@ class GenerateInvoices extends Command
 
                     // Send invoice URL in Slack message.
                     $slack = new Slack( $user );
-                    $slack->sendInvoiceMessage( $invoice_name, $user->next_invoice_number, $invoice->document->getId());
+                    $slack->sendInvoiceMessage( $invoice_name, $user->next_invoice_number, $invoice->document->getId(), today()->toDateString());
 
                     $user->next_invoice_number = $user->next_invoice_number + 1;
                     $user->send_invoice_at = today()->addMonth()->endOfMonth()->subDay();

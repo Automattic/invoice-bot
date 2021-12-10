@@ -74,7 +74,7 @@ class Slack
     return $this->post('chat.postMessage', $message);
   }
 
-  public function sendInvoiceMessage($invoice_name, $invoice_number, $invoice_id)
+  public function sendInvoiceMessage($invoice_name, $invoice_number, $invoice_id, $invoice_date)
   {
     $invoice_url = GoogleDrive::getDocLinkById($invoice_id);
 
@@ -109,7 +109,12 @@ class Slack
                             'text' => 'Send Invoice',
                         ],
                         'style' => 'primary',
-                        'value' => json_encode(['invoice_number' => $invoice_number, 'invoice_id' => $invoice_id, 'invoice_name' => $invoice_name]),
+                        'value' => json_encode([
+                          'invoice_number' => $invoice_number,
+                          'invoice_id' => $invoice_id,
+                          'invoice_name' => $invoice_name,
+                          'invoice_date' => $invoice_date,
+                        ]),
                         'action_id' => 'submit-invoice',
                     ]
                 ]
