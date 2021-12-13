@@ -259,7 +259,7 @@ class SlackController extends Controller
                     'type' => 'section',
                     'text' => [
                         'type' => 'mrkdwn',
-                        'text' => 'I have submitted the invoice on behalf of you!',
+                        'text' => 'I have submitted the invoice on your beahalf!',
                     ],
                 ],
                 Slack::getInvoicePreviewBlock($invoiceData->invoice_number, $invoiceData->invoice_name),
@@ -273,7 +273,6 @@ class SlackController extends Controller
                                 'text' => 'View Invoice',
                                 'emoji' => true,
                             ],
-                            'style' => 'primary',
                             'url' => GoogleDrive::getDocLinkById( $invoiceData->invoice_id ),
                             'value' => 'invoice_settings',
                             'action_id' => 'invoice_settings',
