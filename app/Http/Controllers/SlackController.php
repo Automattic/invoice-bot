@@ -153,8 +153,6 @@ class SlackController extends Controller
             ['slack_channel_id' => $event->channel]
         );
 
-        
-
         $slack = new Slack( $user );
         $slackUserData = $slack->getUserInfo();
 

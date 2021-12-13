@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Crypt;
 
 class User extends Model
 {
@@ -14,9 +15,15 @@ class User extends Model
         'slack_channel_id',
     ];
 
-    protected $casts = [
-        'google_access_token' => 'array',
-    ];
+    public function getGoogleAccessTokenAttribute($value)
+    {
+        return json_decode(Crypt::decrypt($value), true);
+    }
+
+    public function setGoogleAccessTokenAttribute($value)
+    {
+        $this->attributes['google_access_token'] = Crypt::encrypt(json_encode($value));
+    }
 
     /**
      * Get the route key for the model.
