@@ -14,7 +14,7 @@ class AddInvoiceDayColumn extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->integer('invoice_day');
+            $table->integer('invoice_day')->default(28)->after('send_invoice_at');
         });
     }
 
