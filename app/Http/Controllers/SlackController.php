@@ -85,6 +85,8 @@ class SlackController extends Controller
                 return $this->handleSubmitInvoice( $payload, $client );
             case 'next-invoice-number-action':
                 return $this->handleInvoiceNumberAction( $payload );
+            case 'invoice-day-action':
+                return $this->handleInvoiceDayAction( $payload );
             case 'disconnect-action':
                 return $this->handleDisconnectAction( $payload );
         }
@@ -287,6 +289,15 @@ class SlackController extends Controller
     {
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $user->next_invoice_number = $payload->actions[0]->value;
+        $user->save();
+
+        return response( '', 200 );
+    }
+
+    private function handleInvoiceDayAction( $payload )
+    {
+        $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
+        $user->invoice_day = $payload->actions[0]->value;
         $user->save();
 
         return response( '', 200 );

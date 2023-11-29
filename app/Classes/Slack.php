@@ -457,7 +457,7 @@ class Slack
         'type' => 'section',
         'text' => [
           'type' => 'plain_text',
-          'text' => "Don't want your invoice numbers to start from 1? Use the field below to set your next invoice number.",
+          'text' => "Customize your invoice",
         ],
       ],
       [
@@ -472,6 +472,20 @@ class Slack
           'type' => 'plain_text',
           'text' => 'Next Invoice Number',
           'emoji' => true,
+        ],
+      ],
+      [
+        'dispatch_action' => true,
+        'type' => 'input',
+        'element' => [
+          'type' => 'plain_text_input',
+          'action_id' => 'invoice-day-action',
+          'initial_value' => (string) $this->user->invoice_day,
+        ],
+        'label' => [
+          'type' => 'plain_text',
+          'text' => 'Day of month to send invoice on',
+          'emoji' => false,
         ],
       ],
       [
