@@ -427,7 +427,7 @@ class Slack
         'type' => 'section',
         'text' => [
           'type' => 'plain_text',
-          'text' => 'On the second last day of every month I will create a new invoice and remind you to send it. :money_mouth_face:',
+          'text' => "On day {$this->user->invoice_day} of every month I will create a new invoice and remind you to send it. :money_mouth_face:",
           'emoji' => true,
         ],
       ],
