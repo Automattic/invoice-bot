@@ -15,6 +15,10 @@ class User extends Model
         'slack_channel_id',
     ];
 
+    protected $casts = [
+        'send_invoice_at' => 'datetime',
+    ];
+
     public function getGoogleAccessTokenAttribute($value)
     {
         return json_decode(Crypt::decrypt($value), true);

@@ -298,6 +298,10 @@ class SlackController extends Controller
     {
         $user = User::where('slack_user_id', $payload->user->id)->firstOrFail();
         $user->invoice_day = $payload->actions[0]->value;
+
+        // Adjust the next invoice due date
+        $user->send_invoice_at = $user->send_invoice_at->day(min($user->invoice_day, $user->send_invoice_at->daysInMonth));
+
         $user->save();
 
         return response( '', 200 );

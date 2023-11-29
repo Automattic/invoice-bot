@@ -62,7 +62,7 @@ class GenerateInvoices extends Command
                     $slack->sendInvoiceMessage( $invoice_name, $user->next_invoice_number, $invoice->document->getId(), today()->toDateString());
 
                     $user->next_invoice_number = $user->next_invoice_number + 1;
-                    $user->send_invoice_at = today()->addMonth()->endOfMonth()->subDay();
+                    $user->send_invoice_at = today()->addMonth()->day(min($user->invoice_day, today()->daysInMonth));
                     $user->save();
                 }
             } );
